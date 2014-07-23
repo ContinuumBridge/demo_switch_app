@@ -36,7 +36,7 @@ class App(CbApp):
         self.appClass = "control"
         self.state = "stopped"
         self.gotSwitch = False
-        self.buttonsID = [] 
+        self.sensorsID = [] 
         self.switchID = ""
         # Super-class init must be called
         CbApp.__init__(self, argv)
@@ -52,37 +52,52 @@ class App(CbApp):
         logging.debug("%s onadaptorFunctions, message: %s", ModuleName, message)
         for p in message["functions"]:
             if p["parameter"] == "buttons":
-                self.buttonsID.append(message["id"])
+                self.sensorsID.append(message["id"])
                 req = {"id": self.id,
                       "request": "functions",
                       "functions": [
                                     {"parameter": "buttons",
-                                    "interval": 0}
+                                     "interval": 0
+                                    }
                                    ]
                       }
                 self.sendMessage(req, message["id"])
-                logging.debug("%s onadaptorFunctions, req: %s", ModuleName, req)
+                #logging.debug("%s onadaptorFunctions, req: %s", ModuleName, req)
+            elif p["parameter"] == "binary_sensor":
+                self.sensorsID.append(message["id"])
+                req = {"id": self.id,
+                      "request": "functions",
+                      "functions": [
+                                    {"parameter": "binary_sensor",
+                                     "interval": 0
+                                    }
+                                   ]
+                      }
+                self.sendMessage(req, message["id"])
             elif p["parameter"] == "switch":
                 self.switchID = message["id"]
                 self.gotSwitch = True
-                logging.debug("%s switchID: %s", ModuleName, self.switchID)
+                #logging.debug("%s switchID: %s", ModuleName, self.switchID)
         self.setState("running")
 
     def onAdaptorData(self, message):
-        if message["id"] in self.buttonsID:
+        #logging.debug("%s %s message: %s", ModuleName, self.id, str(message))
+        if message["id"] in self.sensorsID:
             if self.gotSwitch:
                 command = {"id": self.id,
                            "request": "command"}
                 if message["content"] == "buttons":
-                    #logging.debug("%s %s buttons = %s", ModuleName, self.id, message["data"])
                     if message["data"]["rightButton"] == 1:
                         command["data"] = "on"
                         self.sendMessage(command, self.switchID)
                     elif message["data"]["leftButton"] == 1:
                         command["data"] = "off"
                         self.sendMessage(command, self.switchID)
+                elif message["content"] == "binary_sensor":
+                    command["data"] = message["data"]
+                    self.sendMessage(command, self.switchID)
             else:
-                logging.debug("%s Trying to process temperature before switch connected", ModuleName)
+                logging.debug("%s Trying to turn on/off before switch connected", ModuleName)
         elif message["id"] == self.switchID:
             self.switchState = message["body"]
 
