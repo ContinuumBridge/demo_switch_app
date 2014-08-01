@@ -49,7 +49,7 @@ class App(CbApp):
         self.sendManagerMessage(msg)
 
     def onAdaptorFunctions(self, message):
-        logging.debug("%s onadaptorFunctions, message: %s", ModuleName, message)
+        #logging.debug("%s onadaptorFunctions, message: %s", ModuleName, message)
         for p in message["functions"]:
             if p["parameter"] == "buttons":
                 self.sensorsID.append(message["id"])
@@ -102,7 +102,7 @@ class App(CbApp):
             self.switchState = message["body"]
 
     def onConfigureMessage(self, config):
-        logging.debug("%s onConfigureMessage, config: %s", ModuleName, config)
+        #logging.debug("%s onConfigureMessage, config: %s", ModuleName, config)
         self.setState("starting")
 
 if __name__ == '__main__':
