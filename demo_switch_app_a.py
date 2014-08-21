@@ -48,33 +48,33 @@ class App(CbApp):
                "state": self.state}
         self.sendManagerMessage(msg)
 
-    def onAdaptorFunctions(self, message):
-        #logging.debug("%s onadaptorFunctions, message: %s", ModuleName, message)
-        for p in message["functions"]:
-            if p["parameter"] == "buttons":
+    def onAdaptorService(self, message):
+        #logging.debug("%s onadaptorService, message: %s", ModuleName, message)
+        for p in message["service"]:
+            if p["characteristic"] == "buttons":
                 self.sensorsID.append(message["id"])
                 req = {"id": self.id,
-                      "request": "functions",
-                      "functions": [
-                                    {"parameter": "buttons",
+                      "request": "service",
+                      "service": [
+                                    {"characteristic": "buttons",
                                      "interval": 0
                                     }
-                                   ]
+                                 ]
                       }
                 self.sendMessage(req, message["id"])
-                #logging.debug("%s onadaptorFunctions, req: %s", ModuleName, req)
-            elif p["parameter"] == "binary_sensor":
+                #logging.debug("%s onadaptorservice, req: %s", ModuleName, req)
+            elif p["characteristic"] == "binary_sensor":
                 self.sensorsID.append(message["id"])
                 req = {"id": self.id,
-                      "request": "functions",
-                      "functions": [
-                                    {"parameter": "binary_sensor",
+                      "request": "service",
+                      "service": [
+                                    {"characteristic": "binary_sensor",
                                      "interval": 0
                                     }
-                                   ]
+                                 ]
                       }
                 self.sendMessage(req, message["id"])
-            elif p["parameter"] == "switch":
+            elif p["characteristic"] == "switch":
                 self.switchID = message["id"]
                 self.gotSwitch = True
                 #logging.debug("%s switchID: %s", ModuleName, self.switchID)
@@ -86,14 +86,14 @@ class App(CbApp):
             if self.gotSwitch:
                 command = {"id": self.id,
                            "request": "command"}
-                if message["content"] == "buttons":
+                if message["characteristic"] == "buttons":
                     if message["data"]["rightButton"] == 1:
                         command["data"] = "on"
                         self.sendMessage(command, self.switchID)
                     elif message["data"]["leftButton"] == 1:
                         command["data"] = "off"
                         self.sendMessage(command, self.switchID)
-                elif message["content"] == "binary_sensor":
+                elif message["characteristic"] == "binary_sensor":
                     command["data"] = message["data"]
                     self.sendMessage(command, self.switchID)
             else:
