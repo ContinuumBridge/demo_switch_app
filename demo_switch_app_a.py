@@ -50,34 +50,43 @@ class App(CbApp):
 
     def onAdaptorService(self, message):
         #logging.debug("%s onadaptorService, message: %s", ModuleName, message)
+        sensor = False
+        switch = False
+        buttons = False
         for p in message["service"]:
             if p["characteristic"] == "buttons":
-                self.sensorsID.append(message["id"])
-                req = {"id": self.id,
-                      "request": "service",
-                      "service": [
-                                    {"characteristic": "buttons",
-                                     "interval": 0
-                                    }
-                                 ]
-                      }
-                self.sendMessage(req, message["id"])
-                #logging.debug("%s onadaptorservice, req: %s", ModuleName, req)
+                buttons = True
             elif p["characteristic"] == "binary_sensor":
-                self.sensorsID.append(message["id"])
-                req = {"id": self.id,
-                      "request": "service",
-                      "service": [
-                                    {"characteristic": "binary_sensor",
-                                     "interval": 0
-                                    }
-                                 ]
-                      }
-                self.sendMessage(req, message["id"])
+                sensor = True
             elif p["characteristic"] == "switch":
-                self.switchID = message["id"]
-                self.gotSwitch = True
-                #logging.debug("%s switchID: %s", ModuleName, self.switchID)
+                switch = True
+        if buttons and not switch:
+            self.sensorsID.append(message["id"])
+            req = {"id": self.id,
+                  "request": "service",
+                  "service": [
+                                {"characteristic": "buttons",
+                                 "interval": 0
+                                }
+                             ]
+                  }
+            self.sendMessage(req, message["id"])
+            #logging.debug("%s onadaptorservice, req: %s", ModuleName, req)
+        elif sensor and not switch:
+            self.sensorsID.append(message["id"])
+            req = {"id": self.id,
+                  "request": "service",
+                  "service": [
+                                {"characteristic": "binary_sensor",
+                                 "interval": 0
+                                }
+                             ]
+                  }
+            self.sendMessage(req, message["id"])
+        elif switch:
+            self.switchID = message["id"]
+            self.gotSwitch = True
+            #logging.debug("%s switchID: %s", ModuleName, self.switchID)
         self.setState("running")
 
     def onAdaptorData(self, message):
