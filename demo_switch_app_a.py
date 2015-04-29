@@ -1,40 +1,19 @@
 #!/usr/bin/env python
-# demo_switch_app.py
+# demo_switch_app_a.py
 """
 Copyright (c) 2014 ContinuumBridge Limited
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 """
-ModuleName = "demo_switch_app" 
 
 import sys
-import os.path
-import time
-import logging
+import json
 from cbcommslib import CbApp
 from cbconfig import *
 
 class App(CbApp):
     def __init__(self, argv):
-        logging.basicConfig(filename=CB_LOGFILE,level=CB_LOGGING_LEVEL,format='%(asctime)s %(message)s')
         self.appClass = "control"
         self.state = "stopped"
+        self.switchState = "off"
         self.gotSwitch = False
         self.sensorsID = [] 
         self.switchID = ""
@@ -48,71 +27,58 @@ class App(CbApp):
                "state": self.state}
         self.sendManagerMessage(msg)
 
+    def sendServiceResponse(self, characteristic, device):
+        r = {"id": self.id,
+             "request": "service",
+             "service": [
+                          {"characteristic": characteristic,
+                           "interval": 0
+                          }
+                        ]
+            }
+        self.sendMessage(r, device)
+
+    def sendCommand(self, state):
+        r = {"id": self.id,
+             "request": "command",
+             "data": state
+            }
+        self.sendMessage(r, self.switchID)
+
     def onAdaptorService(self, message):
-        #logging.debug("%s onadaptorService, message: %s", ModuleName, message)
-        sensor = False
+        self.cbLog("debug", "onAdaptorService, message: " + str(json.dumps(message, indent=4)))
+        controller = None
         switch = False
-        buttons = False
-        for p in message["service"]:
-            if p["characteristic"] == "buttons":
-                buttons = True
-            elif p["characteristic"] == "binary_sensor":
-                sensor = True
-            elif p["characteristic"] == "switch":
+        for s in message["service"]:
+            if s["characteristic"] == "buttons" or s["characteristic"] == "number_buttons" \
+                or s["characteristic"] == "binary_sensor":
+                controller = s["characteristic"]
+            elif s["characteristic"] == "switch":
+                self.switchID = message["id"]
                 switch = True
-        if buttons and not switch:
+                self.gotSwitch = True
+        if controller and not switch:
             self.sensorsID.append(message["id"])
-            req = {"id": self.id,
-                  "request": "service",
-                  "service": [
-                                {"characteristic": "buttons",
-                                 "interval": 0
-                                }
-                             ]
-                  }
-            self.sendMessage(req, message["id"])
-            #logging.debug("%s onadaptorservice, req: %s", ModuleName, req)
-        elif sensor and not switch:
-            self.sensorsID.append(message["id"])
-            req = {"id": self.id,
-                  "request": "service",
-                  "service": [
-                                {"characteristic": "binary_sensor",
-                                 "interval": 0
-                                }
-                             ]
-                  }
-            self.sendMessage(req, message["id"])
-        elif switch:
-            self.switchID = message["id"]
-            self.gotSwitch = True
-            #logging.debug("%s switchID: %s", ModuleName, self.switchID)
+            self.sendServiceResponse(controller, message["id"])
         self.setState("running")
 
     def onAdaptorData(self, message):
-        #logging.debug("%s %s message: %s", ModuleName, self.id, str(message))
+        self.cbLog("debug", "onAdaptorData, message: " + str(json.dumps(message, indent=4)))
         if message["id"] in self.sensorsID:
             if self.gotSwitch:
-                command = {"id": self.id,
-                           "request": "command"}
-                if message["characteristic"] == "buttons":
-                    if message["data"]["rightButton"] == 1:
-                        command["data"] = "on"
-                        self.sendMessage(command, self.switchID)
-                    elif message["data"]["leftButton"] == 1:
-                        command["data"] = "off"
-                        self.sendMessage(command, self.switchID)
-                elif message["characteristic"] == "binary_sensor":
-                    command["data"] = message["data"]
-                    self.sendMessage(command, self.switchID)
+                if message["characteristic"] == "binary_sensor":
+                    self.switchState = message["data"]
+                else:
+                    if self.switchState == "off":
+                        self.switchState = "on"
+                    else:
+                        self.switchState = "off"
+                self.sendCommand(self.switchState)
             else:
-                logging.debug("%s Trying to turn on/off before switch connected", ModuleName)
-        elif message["id"] == self.switchID:
-            self.switchState = message["body"]
+                self.cbLog("debug", "Trying to turn on/off before switch connected")
 
     def onConfigureMessage(self, config):
-        #logging.debug("%s onConfigureMessage, config: %s", ModuleName, config)
         self.setState("starting")
 
 if __name__ == '__main__':
-    app = App(sys.argv)
+    App(sys.argv)

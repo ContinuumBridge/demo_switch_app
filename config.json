@@ -1,0 +1,9 @@
+{
+    "exe": "demo_switch_app.py", 
+    "description": "App to demonstrate turning a switch on and off from various buttons, etc", 
+    "url": "https://github.com/ContinuumBridge/demo_switch_app/archive/v1.0.0.tar.gz", 
+    "app_resource": "/api/bridge/v1/app/4", 
+    "version": "1.0.0", 
+    "provider": "ContinuumBridge", 
+    "name": "Demo Switch App"
+}
